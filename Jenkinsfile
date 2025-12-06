@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "YOUR_DOCKERHUB_USERNAME/login-app"
+        IMAGE_NAME = "sheetalkadolkar/login-app"
     }
 
     stages {
