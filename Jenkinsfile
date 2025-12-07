@@ -3,33 +3,47 @@ pipeline {
 
     environment {
         IMAGE_NAME = "sheetalkadolkar/login-app"
+        DOCKER_CREDS = "docker-hub-creds"
+        KUBE_CONFIG = "C:/Users/Sheetal/.kube/config"
     }
 
     stages {
 
-        stage('Clone Repository') {
+        stage("Clone Code") {
             steps {
-                git 'https://github.com/SheetalKadolkar/login-devops.git'
+                git branch: 'main',
+                    url: 'https://github.com/SheetalKadolkar/login-devops.git'
             }
         }
 
-        stage('Build Docker Image') {
+        stage("Build Docker Image") {
             steps {
-                sh 'docker build -t $IMAGE_NAME:latest .'
+                sh "docker build -t $IMAGE_NAME:latest ."
             }
         }
 
-        stage('Push Image to DockerHub') {
+        stage("Login to DockerHub") {
             steps {
-                withDockerRegistry([credentialsId: 'dockerhub', url: '']) {
-                    sh 'docker push $IMAGE_NAME:latest'
+                withCredentials([usernamePassword(
+                    credentialsId: "$DOCKER_CREDS",
+                    usernameVariable: 'USER',
+                    passwordVariable: 'PASS'
+                )]) {
+                    sh "echo $PASS | docker login -u $USER --password-stdin"
                 }
             }
         }
 
-        stage('Deploy to Kubernetes') {
+        stage("Push Image to DockerHub") {
             steps {
-                sh 'kubectl apply -f k8s/'
+                sh "docker push $IMAGE_NAME:latest"
+            }
+        }
+
+        stage("Deploy to Kubernetes") {
+            steps {
+                sh "kubectl apply -f k8s/"
+                sh "kubectl rollout restart deployment login-app"
             }
         }
     }
