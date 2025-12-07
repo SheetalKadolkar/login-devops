@@ -42,10 +42,14 @@ pipeline {
 
         stage('Deploy to Kubernetes') {
             steps {
-                kubernetesDeploy(configs: 'k8s/deployment.yaml', kubeconfigId: 'kube-config-id')
-
+              kubernetesDeploy(
+                    kubeconfigId: 'kubeconfig-id', // match your Jenkins credential ID
+                    configs: 'k8s/deployment.yaml',
+                    enableConfigSubstitution: true
+        )
     }
 }
+
 
 }
 
