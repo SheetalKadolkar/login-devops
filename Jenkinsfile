@@ -42,12 +42,11 @@ pipeline {
         }
 
         stage('Deploy to Kubernetes') {
-           steps {
-            docker.image('bitnami/kubectl:latest').inside {
-            sh 'kubectl apply -f k8s/'
-        }
+            steps {
+                kubernetesDeploy(configs: 'k8s/', kubeconfigId: 'my-kubeconfig')
     }
 }
 
-    }
+}
+
 }
