@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: login-app
-          image: login-app:latest
+          image: sheetalkadolkar/login-app:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 5000
