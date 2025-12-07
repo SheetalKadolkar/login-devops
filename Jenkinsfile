@@ -41,11 +41,13 @@ pipeline {
             }
         }
 
-        stage("Deploy to Kubernetes") {
-            steps {
-                sh "kubectl apply -f k8s/"
-                sh "kubectl rollout restart deployment login-app"
-            }
+        stage('Deploy to Kubernetes') {
+           steps {
+            docker.image('bitnami/kubectl:latest').inside {
+            sh 'kubectl apply -f k8s/'
         }
+    }
+}
+
     }
 }
