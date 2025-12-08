@@ -1,56 +1,59 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    IMAGE_NAME = "sheetalkadolkar/login-app"
-    DOCKER_CREDS = "docker-hub-creds"
-  }
-
-  stages {
-
-    stage("Clone Code") {
-      steps {
-        git branch: 'main',
-            url: 'https://github.com/SheetalKadolkar/login-devops.git'
-      }
+    environment {
+        IMAGE_NAME = "sheetalkadolkar/login-app"
+        DOCKER_CREDS = "docker-hub-creds"
+        KUBE_TOKEN = credentials('kube-token')
     }
 
-    stage("Build Docker Image") {
-      steps {
-        sh "docker build -t $IMAGE_NAME:latest ."
-      }
-    }
+    stages {
 
-    stage("Login & Push to DockerHub") {
-      steps {
-        withCredentials([usernamePassword(
-          credentialsId: 'docker-hub-creds',
-          usernameVariable: 'DOCKER_USER',
-          passwordVariable: 'DOCKER_PASS'
-        )]) {
-          sh '''
-            echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-            docker push sheetalkadolkar/login-app:latest
-          '''
+        stage("Clone Code") {
+            steps {
+                git branch: 'main',
+                    url: 'https://github.com/SheetalKadolkar/login-devops.git'
+            }
         }
-      }
-    }
 
-    stage('Deploy to Kubernetes') {
-        steps {
-        withCredentials([string(credentialsId: 'kube-token', variable: 'K8S_TOKEN')]) {
-            sh """
-            kubectl config set-cluster minikube --server=$(kubectl config view --minify -o jsonpath='{.clusters[0].cluster.server}') --insecure-skip-tls-verify=true
-            kubectl config set-credentials jenkins --token=$K8S_TOKEN
-            kubectl config set-context jenkins --cluster=minikube --user=jenkins
-            kubectl config use-context jenkins
+        stage("Build Docker Image") {
+            steps {
+                sh 'docker build -t sheetalkadolkar/login-app:latest .'
+            }
+        }
 
-            kubectl apply -f k8s/mysql-deployment.yaml
-            kubectl apply -f k8s/app-deployment.yaml
-            """
+        stage("Login & Push to DockerHub") {
+            steps {
+                withCredentials([usernamePassword(
+                    credentialsId: 'docker-hub-creds',
+                    usernameVariable: 'DOCKER_USER',
+                    passwordVariable: 'DOCKER_PASS'
+                )]) {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push sheetalkadolkar/login-app:latest'
+                }
+            }
+        }
+
+        stage("Configure Kubectl") {
+            steps {
+                sh '''
+                kubectl config set-credentials jenkins --token=$KUBE_TOKEN
+                kubectl config set-context jenkins --cluster=minikube --user=jenkins
+                kubectl config use-context jenkins
+                '''
+            }
+        }
+
+        stage("Deploy to Kubernetes") {
+            steps {
+                sh '''
+                kubectl apply -f k8s/mysql-deployment.yaml
+                kubectl apply -f k8s/mysql-service.yaml
+                kubectl apply -f k8s/app-deployment.yaml
+                kubectl apply -f k8s/app-service.yaml
+                '''
+            }
         }
     }
-}
-
-  }
 }
