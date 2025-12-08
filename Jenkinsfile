@@ -2,58 +2,58 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = "sheetalkadolkar/login-app"
-        DOCKER_CREDS = "docker-hub-creds"
-        KUBE_TOKEN = credentials('kube-token')
+        DOCKER_USER = 'sheetalkadolkar'
+        DOCKER_PASS = credentials('docker-hub-creds') // Jenkins credential ID
+        IMAGE_NAME = "sheetalkadolkar/login-app:latest"
     }
 
     stages {
 
-        stage("Clone Code") {
+        stage('Checkout Code') {
             steps {
-                git branch: 'main',
-                    url: 'https://github.com/SheetalKadolkar/login-devops.git'
+                git url: 'https://github.com/SheetalKadolkar/login-devops.git', branch: 'main'
             }
         }
 
-        stage("Build Docker Image") {
+        stage('Build Docker Image') {
             steps {
-                sh 'docker build -t sheetalkadolkar/login-app:latest .'
-            }
-        }
-
-        stage("Login & Push to DockerHub") {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-creds',
-                    usernameVariable: 'DOCKER_USER',
-                    passwordVariable: 'DOCKER_PASS'
-                )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push sheetalkadolkar/login-app:latest'
+                script {
+                    sh 'docker build -t $IMAGE_NAME .'
                 }
             }
         }
 
-        stage("Configure Kubectl") {
+        stage('Push to DockerHub') {
             steps {
-                sh '''
-                kubectl config set-credentials jenkins --token=$KUBE_TOKEN
-                kubectl config set-context jenkins --cluster=minikube --user=jenkins
-                kubectl config use-context jenkins
-                '''
+                script {
+                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
+                    sh 'docker push $IMAGE_NAME'
+                }
             }
         }
 
-        stage("Deploy to Kubernetes") {
+        stage('Deploy to Kubernetes') {
             steps {
-                sh '''
-                kubectl apply -f k8s/mysql-deployment.yaml
-                kubectl apply -f k8s/mysql-service.yaml
-                kubectl apply -f k8s/app-deployment.yaml
-                kubectl apply -f k8s/app-service.yaml
-                '''
+                script {
+                    // Use Minikube context
+                    sh 'kubectl config use-context minikube'
+
+                    // Apply all Kubernetes manifests
+                    sh 'kubectl apply -f k8s/mysql-deployment.yaml'
+                    sh 'kubectl apply -f k8s/login-app-deployment.yaml'
+                    sh 'kubectl apply -f k8s/login-app-service.yaml'
+                }
             }
+        }
+
+    }
+
+    post {
+        success {
+            echo 'Pipeline completed successfully!'
+        }
+        failure {
+            echo 'Pipeline failed. Check the logs.'
         }
     }
 }
