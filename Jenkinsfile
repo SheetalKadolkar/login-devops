@@ -40,15 +40,22 @@ pipeline {
             }
         }
 
-        stage('Deploy to Kubernetes') {
-            steps {
-              kubernetesDeploy(
-                    kubeconfigId: 'kubeconfig-id', // match your Jenkins credential ID
-                    configs: 'k8s/deployment.yaml',
-                    enableConfigSubstitution: true
-        )
+       stage('Deploy to Kubernetes') {
+           steps {
+           withCredentials([file(credentialsId: 'kubeconfig-id', variable: 'KUBECONFIG_FILE')]) {
+           sh '''
+           export KUBECONFIG=$KUBECONFIG_FILE
+           kubectl apply -f k8s/mysql-deployment.yaml
+           kubectl apply -f k8s/my-sqlservice.yaml
+           kubectl apply -f k8s/app-deploymeny.yaml
+           kubectl apply -f k8s/app-service.yaml
+           kubectl get pods
+           kubectl get svc
+       '''
     }
+  }
 }
+
 
 
 }
