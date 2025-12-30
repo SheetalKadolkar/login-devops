@@ -4,7 +4,6 @@ pipeline {
     environment {
         IMAGE_NAME = "sheetalkadolkar/login-app"
         DOCKER_CREDS = "docker-hub-creds"
-        KUBE_TOKEN = credentials('kube-token')
     }
 
     stages {
