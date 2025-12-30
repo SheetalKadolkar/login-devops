@@ -44,19 +44,17 @@ pipeline {
 
         stage("Deploy to Kubernetes") {
             steps {
-                withCredentials([string(credentialsId: 'kube-token', variable: 'KUBE_TOKEN')]) {
+                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh '''
-                      kubectl config set-credentials jenkins --token=$KUBE_TOKEN
-                      kubectl config set-context jenkins --cluster=minikube --user=jenkins
-                      kubectl config use-context jenkins
-
+                      kubectl get nodes
                       kubectl apply -f k8s/mysql-deployment.yaml
                       kubectl apply -f k8s/mysql-service.yaml
                       kubectl apply -f k8s/app-deployment.yaml
                       kubectl apply -f k8s/app-service.yaml
-                    '''
-                }
-            }
+                     '''
         }
+    }
+}
+
     }
 }
