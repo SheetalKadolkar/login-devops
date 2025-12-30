@@ -15,6 +15,12 @@ pipeline {
             }
         }
 
+        stage("Docker Check") {
+            steps {
+                sh 'docker --version'
+            }
+        }
+
         stage("Build Docker Image") {
             steps {
                 sh 'docker build -t sheetalkadolkar/login-app:latest .'
@@ -28,30 +34,28 @@ pipeline {
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
-                    sh 'echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin'
-                    sh 'docker push sheetalkadolkar/login-app:latest'
+                    sh '''
+                      echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                      docker push sheetalkadolkar/login-app:latest
+                    '''
                 }
-            }
-        }
-
-        stage("Configure Kubectl") {
-            steps {
-                sh '''
-                kubectl config set-credentials jenkins --token=$KUBE_TOKEN
-                kubectl config set-context jenkins --cluster=minikube --user=jenkins
-                kubectl config use-context jenkins
-                '''
             }
         }
 
         stage("Deploy to Kubernetes") {
             steps {
-                sh '''
-                kubectl apply -f k8s/mysql-deployment.yaml
-                kubectl apply -f k8s/mysql-service.yaml
-                kubectl apply -f k8s/app-deployment.yaml
-                kubectl apply -f k8s/app-service.yaml
-                '''
+                withCredentials([string(credentialsId: 'kube-token', variable: 'KUBE_TOKEN')]) {
+                    sh '''
+                      kubectl config set-credentials jenkins --token=$KUBE_TOKEN
+                      kubectl config set-context jenkins --cluster=minikube --user=jenkins
+                      kubectl config use-context jenkins
+
+                      kubectl apply -f k8s/mysql-deployment.yaml
+                      kubectl apply -f k8s/mysql-service.yaml
+                      kubectl apply -f k8s/app-deployment.yaml
+                      kubectl apply -f k8s/app-service.yaml
+                    '''
+                }
             }
         }
     }
