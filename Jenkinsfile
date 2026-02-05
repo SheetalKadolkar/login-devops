@@ -48,19 +48,18 @@ pipeline {
 
         stage("Deploy to Kubernetes") {
             steps {
-                withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
-                    sh '''
-                      export KUBECONFIG=$KUBECONFIG
-                      kubectl get nodes
+               sh '''
+                 aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
 
-                      kubectl apply -f k8s/
+                 kubectl get nodes
+                 kubectl apply -f k8s/
 
-                      kubectl rollout status deployment/mysql
-                      kubectl rollout status deployment/login-app
-                    '''
-                }
-            }
-        }
+                 kubectl rollout status deployment/mysql
+                 kubectl rollout status deployment/login-app
+        '''
+    }
+}
+
     }
 
     post {
