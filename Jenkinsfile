@@ -49,13 +49,17 @@ pipeline {
         stage("Deploy to Kubernetes") {
             steps {
                sh '''
-                 aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
+                aws eks update-kubeconfig --region us-east-1 --name my-eks-cluster
 
-                 kubectl get nodes
-                 kubectl apply -f k8s/
+                kubectl get nodes
 
-                 kubectl rollout status deployment/mysql
-                 kubectl rollout status deployment/login-app
+                kubectl apply -f k8s/mysql-deployment.yaml
+                kubectl apply -f k8s/mysql-service.yaml
+                kubectl apply -f k8s/app-deployment.yaml
+                kubectl apply -f k8s/app-service.yaml
+
+                kubectl rollout status deployment/mysql
+                kubectl rollout status deployment/login-app
         '''
     }
 }
