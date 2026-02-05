@@ -15,7 +15,15 @@ spec:
       containers:
         - name: login-app
           image: sheetalkadolkar/login-app:latest
-          imagePullPolicy: IfNotPresent
-
+          imagePullPolicy: Always
           ports:
             - containerPort: 5000
+          env:
+            - name: DB_HOST
+              value: mysql
+            - name: DB_USER
+              value: root
+            - name: DB_PASS
+              value: root
+            - name: DB_NAME
+              value: logindb

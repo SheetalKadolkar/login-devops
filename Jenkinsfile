@@ -12,19 +12,13 @@ pipeline {
         stage("Clone Code") {
             steps {
                 git branch: 'main',
-                    url: 'https://github.com/SheetalKadolkar/login-devops.git'
-            }
-        }
-
-        stage("Docker Check") {
-            steps {
-                sh 'docker --version'
+                url: 'https://github.com/SheetalKadolkar/login-devops.git'
             }
         }
 
         stage("Build Docker Image") {
             steps {
-                sh "docker build -t ${IMAGE_NAME} ."
+                sh "docker build -t ${IMAGE_NAME}:latest ."
             }
         }
 
@@ -37,7 +31,7 @@ pipeline {
                 )]) {
                     sh '''
                         echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                        docker push ${IMAGE_NAME}
+                        docker push ${IMAGE_NAME}:latest
                     '''
                 }
             }
@@ -47,22 +41,20 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh '''
-                        
-                        kubectl get nodes
+                      export KUBECONFIG=$KUBECONFIG
+                      kubectl get nodes
 
-                        kubectl apply -f k8s/mysql-deployment.yaml -n ${KUBE_NAMESPACE}
-                        kubectl apply -f k8s/mysql-service.yaml -n ${KUBE_NAMESPACE}
+                      kubectl apply -f k8s/mysql-deployment.yaml
+                      kubectl apply -f k8s/mysql-service.yaml
+                      kubectl apply -f k8s/app-deployment.yaml
+                      kubectl apply -f k8s/app-service.yaml
 
-                        kubectl apply -f k8s/app-deployment.yaml -n ${KUBE_NAMESPACE}
-                        kubectl apply -f k8s/app-service.yaml -n ${KUBE_NAMESPACE}
-
-                        kubectl rollout status deployment/mysql -n ${KUBE_NAMESPACE}
-                        kubectl rollout status deployment/login-app -n ${KUBE_NAMESPACE}
+                      kubectl rollout status deployment/mysql
+                      kubectl rollout status deployment/login-app
                     '''
                 }
             }
         }
-
     }
-
-   }
+    
+}
