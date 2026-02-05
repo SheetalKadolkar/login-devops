@@ -4,6 +4,7 @@ pipeline {
     environment {
         IMAGE_NAME = "sheetalkadolkar/login-app"
         DOCKER_CREDS = "docker-hub-creds"
+        KUBE_NAMESPACE = "default"
     }
 
     stages {
@@ -23,20 +24,20 @@ pipeline {
 
         stage("Build Docker Image") {
             steps {
-                sh 'docker build -t sheetalkadolkar/login-app:latest .'
+                sh "docker build -t ${IMAGE_NAME} ."
             }
         }
 
-        stage("Login & Push to DockerHub") {
+        stage("Docker Login & Push") {
             steps {
                 withCredentials([usernamePassword(
-                    credentialsId: 'docker-hub-creds',
+                    credentialsId: "${DOCKER_CREDS}",
                     usernameVariable: 'DOCKER_USER',
                     passwordVariable: 'DOCKER_PASS'
                 )]) {
                     sh '''
-                      echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
-                      docker push sheetalkadolkar/login-app:latest
+                        echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${IMAGE_NAME}
                     '''
                 }
             }
@@ -46,15 +47,22 @@ pipeline {
             steps {
                 withCredentials([file(credentialsId: 'kubeconfig', variable: 'KUBECONFIG')]) {
                     sh '''
-                      kubectl get nodes
-                      kubectl apply -f k8s/mysql-deployment.yaml
-                      kubectl apply -f k8s/mysql-service.yaml
-                      kubectl apply -f k8s/app-deployment.yaml
-                      kubectl apply -f k8s/app-service.yaml
-                     '''
+                        
+                        kubectl get nodes
+
+                        kubectl apply -f k8s/mysql-deployment.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f k8s/mysql-service.yaml -n ${KUBE_NAMESPACE}
+
+                        kubectl apply -f k8s/app-deployment.yaml -n ${KUBE_NAMESPACE}
+                        kubectl apply -f k8s/app-service.yaml -n ${KUBE_NAMESPACE}
+
+                        kubectl rollout status deployment/mysql -n ${KUBE_NAMESPACE}
+                        kubectl rollout status deployment/login-app -n ${KUBE_NAMESPACE}
+                    '''
+                }
+            }
         }
-    }
-}
 
     }
-}
+
+   }
