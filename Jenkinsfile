@@ -5,20 +5,28 @@ pipeline {
         IMAGE_NAME = "sheetalkadolkar/login-app"
         DOCKER_CREDS = "docker-hub-creds"
         KUBE_NAMESPACE = "default"
+        TAG = "${BUILD_NUMBER}"
     }
 
     stages {
 
-        stage("Clone Code") {
+        stage("Checkout") {
             steps {
-                git branch: 'main',
-                url: 'https://github.com/SheetalKadolkar/login-devops.git'
+                checkout scm
+            }
+        }
+
+        stage("Clean Workspace") {
+            steps {
+                sh "rm -rf * || true"
+                checkout scm
             }
         }
 
         stage("Build Docker Image") {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:latest ."
+                sh "docker build -t ${IMAGE_NAME}:${TAG} ."
+                sh "docker tag ${IMAGE_NAME}:${TAG} ${IMAGE_NAME}:latest"
             }
         }
 
@@ -31,6 +39,7 @@ pipeline {
                 )]) {
                     sh '''
                         echo $DOCKER_PASS | docker login -u $DOCKER_USER --password-stdin
+                        docker push ${IMAGE_NAME}:${TAG}
                         docker push ${IMAGE_NAME}:latest
                     '''
                 }
@@ -44,10 +53,7 @@ pipeline {
                       export KUBECONFIG=$KUBECONFIG
                       kubectl get nodes
 
-                      kubectl apply -f k8s/mysql-deployment.yaml
-                      kubectl apply -f k8s/mysql-service.yaml
-                      kubectl apply -f k8s/app-deployment.yaml
-                      kubectl apply -f k8s/app-service.yaml
+                      kubectl apply -f k8s/
 
                       kubectl rollout status deployment/mysql
                       kubectl rollout status deployment/login-app
@@ -56,5 +62,16 @@ pipeline {
             }
         }
     }
-    
+
+    post {
+        always {
+            echo "Build Completed"
+        }
+        success {
+            echo "Deployment Successful"
+        }
+        failure {
+            echo "Build Failed — Check Logs"
+        }
+    }
 }
